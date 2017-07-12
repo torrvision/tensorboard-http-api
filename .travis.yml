@@ -18,6 +18,7 @@ before_install:
   - popd
 script:
   - pushd client/python
+  - python setup.py install
   - python -Wignore -m unittest discover test/
   - popd
 
