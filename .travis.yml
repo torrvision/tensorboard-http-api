@@ -5,6 +5,9 @@ python:
   - '2.7'
   - '3.5'
 
+env:
+  - DOCKER_API_VERSION=1.24
+
 services:
   - docker
 
