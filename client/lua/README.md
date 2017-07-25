@@ -65,7 +65,7 @@ Run:
 
 ```bash
 # Start new test server
-$ docker run -d -p 7998:8888 -p 7999:8889 --name crayon_lua_test alband/crayon
+$ docker run -d -p 6006:6006 -p 6007:6007 --name crayon_lua_test alband/crayon
 
 # Run test script
 $ lua(jit) test.lua
@@ -82,7 +82,7 @@ local crayon = require("crayon")
 
 --  Connect to the server
 --  substitute localhost and port with the ones you are using
-local cc = crayon.CrayonClient("localhost", 8889)
+local cc = crayon.CrayonClient("localhost", 6007)
 
 --  Create a new experiment
 local foo = cc:create_experiment("foo")
@@ -161,7 +161,7 @@ bar:get_scalar_values("accuracy")
 
 ### `CrayonClient`
 
-* Creation: `CrayonClient(hostname="localhost", port=8889)`
+* Creation: `CrayonClient(hostname="localhost", port=6007)`
   * Create a client object and connect it to the server at address `hostname` and port `port`.
 
 * `get_experiment_names()`

@@ -37,7 +37,7 @@ import shutil
 # Command line arguments
 import argparse
 parser = argparse.ArgumentParser(description="Backend server for crayon")
-parser.add_argument("port", type=int, default=8889,
+parser.add_argument("port", type=int, default=6007,
           help="Port where to listen for incoming datas")
 parser.add_argument("backend_reload", type=float, default=1,
           help="How fast is tensorboard reloading its backend")
@@ -145,7 +145,7 @@ def tb_add_histogram(experiment, name, wall_time, step, histo):
 
 # Perform requests to tensorboard http api
 def tb_request(query_type, run=None, tag=None, safe=True):
-  request_url = "http://localhost:8888/data/{}"
+  request_url = "http://localhost:6006/data/{}"
   if run and tag:
     request_url += "?run={}&tag={}"
 
