@@ -2,8 +2,8 @@ local crayon = require("crayon")
 
 
 -- A clean server should be running on the test_port with:
--- docker run -it -p 7998:8888 -p 7999:8889 --name crayon_lua_test alband/crayon
-local test_port = 7999
+-- docker run -it -p 6006:6006 -p 6007:6007 --name crayon_lua_test alband/crayon
+local test_port = 6007
 
 local cc = crayon.CrayonClient("localhost", test_port)
 

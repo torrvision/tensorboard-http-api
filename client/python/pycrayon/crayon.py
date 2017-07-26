@@ -19,7 +19,7 @@ except NameError:
 
 
 class CrayonClient(object):
-    def __init__(self, hostname="localhost", port=8889):
+    def __init__(self, hostname="localhost", port=6007):
         self.hostname = hostname
         self.port = port
         self.url = self.hostname + ":" + str(self.port)

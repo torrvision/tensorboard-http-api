@@ -48,11 +48,11 @@ TL;DR:
 To start the server, run the following:
 
 ```bash
-$ docker run -d -p 8888:8888 -p 8889:8889 --name crayon alband/crayon
+$ docker run -d -p 6006:6006 -p 6007:6007 --name crayon alband/crayon
 ```
 
-Tensorboard is now accessible on a browser at `server_machine_address:8888`. The
-client should send the data at `server_machine_address:8889`.
+Tensorboard is now accessible on a browser at `server_machine_address:6006`. The
+client should send the data at `server_machine_address:6007`.
 
 ### Client
 

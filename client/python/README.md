@@ -67,7 +67,7 @@ bar.get_scalar_values("accuracy")
 
 ### `CrayonClient`
 
-* Creation: `CrayonClient(hostname="localhost", port=8889)`
+* Creation: `CrayonClient(hostname="localhost", port=6007)`
   * Create a client object and connect it to the server at address `hostname` and port `port`.
 
 * `get_experiment_names()`

@@ -17,7 +17,7 @@ do
         setmetatable(self, CrayonClient)
 
         self.hostname = hostname or "localhost"
-        self.port = port or 8889
+        self.port = port or 6007
         self.url = self.hostname .. ":" .. tostring(self.port)
 
         -- Add http header if missing
