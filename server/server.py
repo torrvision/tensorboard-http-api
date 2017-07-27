@@ -53,17 +53,22 @@ cli_args = parser.parse_args()
 # We add 1s to make sure all files are loaded from disk
 request_delay = cli_args.backend_reload + 1
 
+
 def to_unicode(experiment):
     assert experiment and isinstance(experiment, basestring)
     return unicode(experiment)
 
-### Tensorboard utility functions
+
+# Tensorboard utility functions
 tensorboard_folder = "/tmp/tensorboard/{}"
 # Make sure we do not access data too fast
 xp_modified = {}
+
+
 def tb_modified_xp(experiment, modified_type=None, wall_time=None):
     assert modified_type is None or modified_type in supported_types
     xp_modified[experiment] = (time.time(), modified_type, wall_time)
+
 
 def last_timestamp_loaded(experiment, modified_type, last_timestamp):
     req_res = tb_request("runs", safe=False)
@@ -72,12 +77,14 @@ def last_timestamp_loaded(experiment, modified_type, last_timestamp):
         if modified_type in tb_data[experiment]:
             names = tb_data[experiment][modified_type]
             for name in names:
-                req_res = tb_request(modified_type, experiment, name, safe=False)
+                req_res = tb_request(modified_type, experiment,
+                                     name, safe=False)
                 req_res = json.loads(req_res)
                 for value in req_res:
                     if value[0] == last_timestamp:
                         return True
     return False
+
 
 def tb_access_xp(experiment):
     if experiment not in xp_modified:
@@ -87,7 +94,8 @@ def tb_access_xp(experiment):
     while time.time() < last_modified + request_delay:
         # If we know the last timestamp, try to exit early
         if modified_type is not None:
-            if last_timestamp_loaded(experiment, modified_type, last_timestamp):
+            if last_timestamp_loaded(experiment,
+                                     modified_type, last_timestamp):
                 break
         else:
             time.sleep(0.01)
@@ -99,8 +107,11 @@ def tb_access_all():
     for experiment in xp_modified:
         tb_access_xp(experiment)
 
+
 # Make sure we have writers for all experiments
 xp_writers = {}
+
+
 def tb_get_xp_writer(experiment):
     if experiment in xp_writers:
         return xp_writers[experiment]
@@ -120,8 +131,10 @@ def tb_remove_xp_writer(experiment):
         # Prevent recreating it too quickly
         tb_modified_xp(experiment)
 
+
 def tb_xp_writer_exists(experiment):
     return experiment in xp_writers
+
 
 # Use writers
 def tb_add_scalar(experiment, name, wall_time, step, value):
@@ -133,6 +146,7 @@ def tb_add_scalar(experiment, name, wall_time, step, value):
     writer.add_event(event)
     writer.flush()
     tb_modified_xp(experiment, modified_type="scalars", wall_time=wall_time)
+
 
 def tb_add_histogram(experiment, name, wall_time, step, histo):
     # Tensorflow does not support key being unicode
@@ -166,7 +180,7 @@ def tb_request(query_type, run=None, tag=None, safe=True):
     request_url = request_url.format(query_type, run, tag)
     try:
         return urllib2.urlopen(request_url, timeout=1).read()
-    except:
+    except urllib2.URLError:
         raise ValueError
 
 
@@ -192,7 +206,8 @@ def tb_make_histogram(values):
         idx = bisect.bisect_left(limits, v)
         counts[idx] += 1
 
-    limit_counts = [(limits[i], counts[i]) for i in xrange(len(limits)) if counts[i]]
+    limit_counts = [(limits[i], counts[i]) for i in xrange(len(limits))
+                    if counts[i]]
     bucket_limit = [lc[0] for lc in limit_counts]
     bucket = [lc[1] for lc in limit_counts]
     sum_sq = sum(v * v for v in values)
@@ -205,55 +220,57 @@ def tb_make_histogram(values):
         "bucket_limit": bucket_limit,
         "bucket": bucket
     }
-## END of borrowed
+# End of borrowed
 
 
-### Error handler
+# Error handling
 @app.errorhandler(404)
 def not_found(error):
     del error  # unused
     return "This is not the web page you are looking for."
 
-def wrong_argument(message):
+
+def error_400(message):
     print("wrong_argument: ", message)
     return message, 400
 
-### Running and version check
+
+# Running and version check
 @app.route('/', methods=["GET"])
 def get_version():
     # Verify that tensorboard is running
     try:
-        req_res = tb_request("logdir")
-    except:  # pylint: disable=bare-except
-        return wrong_argument("Server: TensorBoard failed to answer request 'logdir'")
+        req_res = tb_request("logdir")  # throws ValueError
+    except ValueError:
+        return error_400("TensorBoard failed to answer request 'logdir'")
 
     if not json.loads(req_res)["logdir"] == tensorboard_folder[:-3]:
-        return wrong_argument("Tensorboard is not running in the correct folder.")
+        return error_400("Tensorboard not running in the correct folder.")
 
     return __version__
 
 
-### Experience management
+# Experiment management
 @app.route('/data', methods=["GET"])
 def get_all_experiments():
     experiment = request.args.get('xp')
 
     result = ""
     try:
-        req_res = tb_request("runs")
-    except:  # pylint: disable=bare-except
-        return wrong_argument("Server: TensorBoard failed to answer request 'runs'")
+        req_res = tb_request("runs")  # throws ValueError
+    except ValueError:
+        return error_400("TensorBoard failed to answer request 'runs'")
 
     tb_data = json.loads(req_res)
     if experiment:
         try:
             experiment = to_unicode(experiment)
-        except:  # pylint: disable=bare-except
-            return wrong_argument("Experiment name should be a non-empty string \
+        except AssertionError:
+            return error_400("Experiment name should be a non-empty string \
                 or unicode instead of '{}'".format(type(experiment)))
 
         if not tb_xp_writer_exists(experiment):
-            return wrong_argument("Unknown experiment name '{}'".format(experiment))
+            return error_400("Unknown experiment name '{}'".format(experiment))
         if experiment in tb_data:
             result = tb_data[experiment]
             # Remove the not supported types from the answer
@@ -277,27 +294,29 @@ def post_experiment():
     experiment = request.get_json()
     try:
         experiment = to_unicode(experiment)
-    except:  # pylint: disable=bare-except
-        return wrong_argument("Experiment name should be a non-empty string \
+    except AssertionError:
+        return error_400("Experiment name should be a non-empty string \
             or unicode instead of '{}'".format(type(experiment)))
 
     if tb_xp_writer_exists(experiment):
-        return wrong_argument("'{}' experiment already exists".format(experiment))
+        return error_400("'{}' experiment already exists".format(experiment))
 
     tb_get_xp_writer(experiment)
     return "ok"
+
 
 @app.route('/data', methods=["DELETE"])
 def delete_experiment():
     experiment = request.args.get('xp')
     try:
         experiment = to_unicode(experiment)
-    except:  # pylint: disable=bare-except
-        return wrong_argument("Experiment name should be a non-empty string \
+    except AssertionError:
+        return error_400("Experiment name should be a non-empty string \
             or unicode instead of '{}'".format(type(experiment)))
 
     if not tb_xp_writer_exists(experiment):
-        return wrong_argument("'{}' experiment does not already exist".format(experiment))
+        return error_400("'{}' experiment does not already exist"
+                         .format(experiment))
 
     # Delete folder on disk
     folder_path = tensorboard_folder.format(experiment)
@@ -309,29 +328,27 @@ def delete_experiment():
     return "ok"
 
 
-### Scalar data
+# Scalar data
 @app.route('/data/scalars', methods=["GET"])
 def get_scalars():
     experiment = request.args.get('xp')
     try:
         experiment = to_unicode(experiment)
-    except:  # pylint: disable=bare-except
-        return wrong_argument("Experiment name should be a non-empty string \
+    except AssertionError:
+        return error_400("Experiment name should be a non-empty string \
             or unicode instead of '{}'".format(type(experiment)))
     name = request.args.get('name')
     if (not experiment) or (not name):
-        return wrong_argument("xp and name arguments are required")
+        return error_400("xp and name arguments are required")
     if not tb_xp_writer_exists(experiment):
-        return wrong_argument("Unknown experiment name '{}'".format(experiment))
+        return error_400("Unknown experiment name '{}'".format(experiment))
 
     try:
         req_res = tb_request("scalars", experiment, name)
         return req_res
-    except:  # pylint: disable=bare-except
-        message = "Combination of experiment '{}' and name '{}' does not exist"\
-            .format(experiment, name)
-        return wrong_argument(message)
-
+    except urllib2.URLError:
+        message = "No scalar '{}' for experiment '{}'".format(experiment, name)
+        return error_400(message)
 
 
 @app.route('/data/scalars', methods=['POST'])
@@ -340,54 +357,55 @@ def post_scalars():  # pylint: disable=too-many-return-statements
     experiment = request.args.get('xp')
     try:
         experiment = to_unicode(experiment)
-    except:  # pylint: disable=bare-except
-        return wrong_argument("Experiment name should be a non-empty string \
+    except AssertionError:
+        return error_400("Experiment name should be a non-empty string \
             or unicode instead of '{}'".format(type(experiment)))
 
     name = request.args.get('name')
     if (not experiment) or (not name):
-        return wrong_argument("xp and name arguments are required")
+        return error_400("xp and name arguments are required")
     if not tb_xp_writer_exists(experiment):
-        return wrong_argument("Unknown experiment name '{}'".format(experiment))
+        return error_400("Unknown experiment name '{}'".format(experiment))
 
     data = request.get_json()
     if not data:
-        return wrong_argument("POST content is not a proper json")
+        return error_400("POST content is not a proper json")
     if not isinstance(data, list):
-        return wrong_argument("POST content is not a list: '{}'".format(request.form.keys()))
+        return error_400("POST content is not a list: '{}'"
+                         .format(request.form.keys()))
     if not len(data) == 3:
-        return wrong_argument("POST does not contain a list of 3 elements but '{}'".format(data))
+        return error_400("POST does not contain a list of 3 elements but '{}'"
+                         .format(data))
     if not isinstance(data[2], (int, float)):
-        return wrong_argument("POST value is not a number but '{}'".format(data[2]))
+        return error_400("POST value is not a number but '{}'".format(data[2]))
 
     tb_add_scalar(experiment, name, data[0], data[1], data[2])
 
     return "ok"
 
 
-### Histogram data
+# Histogram data
 @app.route('/data/histograms', methods=["GET"])
 def get_histograms():
     experiment = request.args.get('xp')
     try:
         experiment = to_unicode(experiment)
-    except:  # pylint: disable=bare-except
-        return wrong_argument("Experiment name should be a non-empty string \
+    except AssertionError:
+        return error_400("Experiment name should be a non-empty string \
             or unicode instead of '{}'".format(type(experiment)))
+
     name = request.args.get('name')
     if (not experiment) or (not name):
-        return wrong_argument("xp and name arguments are required")
+        return error_400("xp and name arguments are required")
     if not tb_xp_writer_exists(experiment):
-        return wrong_argument("Unknown experiment name '{}'".format(experiment))
+        return error_400("Unknown experiment name '{}'".format(experiment))
 
     try:
         req_res = tb_request("histograms", experiment, name)
         return req_res
-    except:  # pylint: disable=bare-except
-        message = "Combination of experiment '{}' and name '{}' does not exist"\
-            .format(experiment, name)
-        return wrong_argument(message)
-
+    except urllib2.URLError:
+        message = "No name '{}' for experiment '{}'".format(experiment, name)
+        return error_400(message)
 
 
 @app.route('/data/histograms', methods=['POST'])
@@ -395,29 +413,32 @@ def post_histograms():  # pylint: disable=too-many-branches,too-many-return-stat
     experiment = request.args.get('xp')
     try:
         experiment = to_unicode(experiment)
-    except:  # pylint: disable=bare-except
-        return wrong_argument("Experiment name should be a non-empty string \
+    except AssertionError:
+        return error_400("Experiment name should be a non-empty string \
             or unicode instead of '{}'".format(type(experiment)))
+
     name = request.args.get('name')
     to_build = request.args.get('tobuild')
     if (not experiment) or (not name) or (not to_build):
-        return wrong_argument("xp, name and tobuild arguments are required")
+        return error_400("xp, name and tobuild arguments are required")
     if not tb_xp_writer_exists(experiment):
-        return wrong_argument("Unknown experiment name '{}'".format(experiment))
+        return error_400("Unknown experiment name '{}'".format(experiment))
     to_build = to_build.lower() == "true"
 
     data = request.get_json()
     if not data:
-        return wrong_argument("POST content is not a proper json")
+        return error_400("POST content is not a proper json")
     if not isinstance(data, list):
-        return wrong_argument("POST content is not a list: '{}'".format(request.form.keys()))
+        return error_400("POST content is not a list: '{}'"
+                         .format(request.form.keys()))
     if not len(data) == 3:
-        return wrong_argument("POST does not contain a list of 3 elements but '{}'".format(data))
+        return error_400("POST does not contain a list of 3 elements but '{}'"
+                         .format(data))
 
     if to_build:
         if (not data[2]) or (not isinstance(data[2], list)):
-            return wrong_argument("elements to build the histogram are not in a list but '{}'"\
-                .format(data[2]))
+            msg = "elements to build the histogram are not in a list but '{}'"
+            return error_400(msg.format(data[2]))
         histogram_dict = tb_make_histogram(data[2])
     else:
         already_built_required_params = {
@@ -430,43 +451,45 @@ def post_histograms():  # pylint: disable=too-many-branches,too-many-return-stat
         histogram_dict = data[2]
         for required_param in already_built_required_params:
             if required_param not in histogram_dict:
-                message = "Missing argument '{}' to the given histogram".format(required_param)
-                return wrong_argument(message)
+                msg = "Missing argument '{}' to given histogram"
+                return error_400(msg.format(required_param))
             is_ok = False
             for required_type in already_built_required_params[required_param]:
                 if isinstance(histogram_dict[required_param], required_type):
                     is_ok = True
                     break
             if not is_ok:
-                message = "Argument '{}' should be of type '{}' and is '{}'"
-                message = message.format(required_param, \
-                                         str(already_built_required_params[required_param]), \
-                                         str(type(histogram_dict[required_param])))
-                return wrong_argument(message)
+                message = "Argument '{}' should be of type '{}' and is '{}'"\
+                    .format(required_param,
+                            str(already_built_required_params[required_param]),
+                            str(type(histogram_dict[required_param])))
+                return error_400(message)
 
     tb_add_histogram(experiment, name, data[0], data[1], histogram_dict)
 
     return "ok"
 
 
-### Backup data
+# Backup data
 @app.route('/backup', methods=['GET'])
 def get_backup():
     experiment = request.args.get('xp')
     try:
         experiment = to_unicode(experiment)
-    except:  # pylint: disable=bare-except
-        return wrong_argument("Experiment name should be a non-empty string \
+    except AssertionError:
+        return error_400("Experiment name should be a non-empty string \
             or unicode instead of '{}'".format(type(experiment)))
     if not experiment:
-        return wrong_argument("xp argument is required")
+        return error_400("xp argument is required")
 
     folder_path = tensorboard_folder.format(experiment)
 
     if not path.isdir(folder_path):
-        return wrong_argument("Requested experiment '{}' does not exist".format(experiment))
+        return error_400("Requested experiment '{}' does not exist"
+                         .format(experiment))
 
-    zip_file = shutil.make_archive("/tmp/{}".format(experiment), 'zip', folder_path)
+    temp_filepath = "/tmp/{}".format(experiment)
+    zip_file = shutil.make_archive(temp_filepath, 'zip', folder_path)
     return send_file(zip_file, mimetype='application/zip')
 
 
@@ -475,16 +498,17 @@ def post_backup():
     experiment = request.args.get('xp')
     try:
         experiment = to_unicode(experiment)
-    except:  # pylint: disable=bare-except
-        return wrong_argument("Experiment name should be a non-empty string \
+    except AssertionError:
+        return error_400("Experiment name should be a non-empty string \
             or unicode instead of '{}'".format(type(experiment)))
+
     force = request.args.get('force')
     if (not experiment) or (not force):
-        return wrong_argument("xp and force argument are required")
+        return error_400("xp and force arguments are required")
     if not force.lower() == 'true':
-        return wrong_argument("Force must be set to 1 to be able to override a folder")
+        return error_400("Force must be set to 1 to override a folder")
     if tb_xp_writer_exists(experiment):
-        return wrong_argument("Experiment '{}' already exists".format(experiment))
+        return error_400("Experiment '{}' already exists".format(experiment))
 
     folder_path = tensorboard_folder.format(experiment)
     zip_file_path = "/tmp/{}.zip".format(experiment)
@@ -495,13 +519,16 @@ def post_backup():
     else:
         content_type = request.headers.get('Content-type', '')
         if (not content_type) or (content_type != "application/zip"):
-            return wrong_argument("Backup post request should contain a file or a zip")
+            msg = "Backup post request should contain a file or a zip"
+            return error_400(msg)
         with open(zip_file_path, "wb") as f:
             f.write(request.data)
 
     folder_path = tensorboard_folder.format(experiment)
     Popen("mkdir -p {}".format(folder_path), stdout=PIPE, shell=True)
-    Popen("cd {}; unzip {}".format(folder_path, zip_file_path), stdout=PIPE, shell=True)
+    Popen("cd {}; unzip {}".format(folder_path, zip_file_path),
+          stdout=PIPE,
+          shell=True)
 
     tb_get_xp_writer(experiment)
 
