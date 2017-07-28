@@ -9,7 +9,7 @@ import bisect  # builds tf histogram
 
 # Backup includes
 import shutil
-from os import path
+import os
 from subprocess import Popen, PIPE
 
 # Tensorboard includes
@@ -484,7 +484,7 @@ def get_backup():
 
     folder_path = tensorboard_folder.format(experiment)
 
-    if not path.isdir(folder_path):
+    if not os.path.isdir(folder_path):
         return error_400("Requested experiment '{}' does not exist"
                          .format(experiment))
 
