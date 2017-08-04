@@ -4,7 +4,7 @@
 
 # from client folder
 # python minitest.py
-import lapiz as lz
+import pylapiz as lz
 
 c = lz.Client('localhost', port=4800)
 
