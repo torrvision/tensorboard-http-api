@@ -6,7 +6,7 @@
 # python minitest.py
 import pylapiz as lz
 
-c = lz.Client('localhost', port=4800)
+c = lz.Client('localhost')  # , port=6007)
 
 with c.run('name0,lr=1e-4') as run:
     for idx in range(1, 10):

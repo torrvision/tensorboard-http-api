@@ -23,4 +23,5 @@ echo "Using $CRAYON_BACKEND_RELOAD for backend reload time."
 
 tensorboard --reload_interval $CRAYON_BACKEND_RELOAD --logdir /tmp/tensorboard --port 6006 &
 
-python /server.py 6007 $CRAYON_BACKEND_RELOAD 2>&1 1>/tmp/crayon.log
+# python /server.py 6007 $CRAYON_BACKEND_RELOAD 2>&1 1>/tmp/crayon.log
+python -m lapiz.boot --port 6007 --tensorboard-folder /tmp/tensorboard
