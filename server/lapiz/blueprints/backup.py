@@ -3,7 +3,7 @@ import os
 import io
 import zipfile
 from subprocess import Popen, PIPE
-from flask import Blueprint, current_app, request, g, jsonify
+from flask import Blueprint, current_app, request, g
 from flask import send_file
 from .. import tbclient
 

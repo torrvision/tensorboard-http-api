@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import optparse
 import os
+from . import __version__
 
 
 def flaskrun(app, default_host="0.0.0.0", default_port="6007",
@@ -35,12 +36,15 @@ def flaskrun(app, default_host="0.0.0.0", default_port="6007",
 
     app.config.update({
         'name': 'romain',
-        'tensorboard_folder': os.path.join(options.tensorboard_folder,
-                                           'tensorboard')
+        'tensorboard_folder': options.tensorboard_folder,
+        'tensorboard_host': 'localhost',
+        'tensorboard_port': 6006,
+        'tensorboard_url': 'http://localhost:6006',
+        'version': __version__
     })
 
     app.run(
         debug=options.debug,
         host=options.host,
-        port=int(options.port)
+        port=int(options.port),
     )
