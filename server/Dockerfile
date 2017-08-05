@@ -2,8 +2,8 @@ FROM tensorflow/tensorflow:latest
 
 # python code
 RUN pip install flask
-ADD . /code
-WORKDIR /code
+ADD flaskapp /flaskapp
+WORKDIR /flaskapp
 RUN python setup.py install
 WORKDIR /
 
