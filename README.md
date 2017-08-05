@@ -65,5 +65,8 @@ but just don't forget to save and close:
 The wall time associated to events is taken automatically when `run.save()` is
 executed, but it can be overwritten with `run.wall_time(time.time())`.
 
-## Format of json messages
+## Additional doc
 
+- Format of json messages: [JSON.md](JSON.md)
+- More server-side options: [SERVER.md](SERVER.md)
+- `lapiz-client` docs: https://github.com/bosr/lapiz-client

@@ -24,3 +24,9 @@ Finally,
 
 - Tensorboard can then be accessed from a browser at `localhost:6006`.
 - The client should be setup to send the data at `localhost:6007`.
+
+## Additional options
+
+This is basic docker, I know, but in case you want to persist logged data outside the container, you can:
+
+    docker run -d -p 6006:6006 -p 6007:6007 --name lapiz -v /path/to/local/persistent/folder:/tmp bosr/lapiz
