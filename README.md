@@ -67,6 +67,7 @@ executed, but it can be overwritten with `run.wall_time(time.time())`.
 
 ## Additional doc
 
-- Format of json messages: [JSON.md](JSON.md)
-- More server-side options: [SERVER.md](SERVER.md)
+- Format of json messages: [doc/JSON.md](doc/JSON.md)
+- API specs for the Flask server (not yet updated): [doc/specs.md](doc/specs.md)
+- More server-side options: [doc/SERVER.md](doc/SERVER.md)
 - `lapiz-client` docs: https://github.com/bosr/lapiz-client
