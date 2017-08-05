@@ -1,63 +1,73 @@
-# Crayon [![Build Status](https://travis-ci.org/torrvision/crayon.svg?branch=master)](https://travis-ci.org/torrvision/crayon) [![PyPI](https://img.shields.io/pypi/v/pycrayon.svg)](https://pypi.python.org/pypi/pycrayon/)
+# Lapiz is a Tensorboard HTTP Bridge
+Lapiz helps you send data to Tensorboard over HTTP (without requiring Tensorflow at the send point): it can then be used from PyTorch for instance. Of course, being a bridge, it adds flexibility at the cost of some latency (not yet measured).
 
-Crayon is a framework that gives you access to the visualisation power
-of
-[TensorBoard](https://github.com/tensorflow/tensorboard) with
-**any language**. Currently it provides a Python and a Lua interface, however
-you can easily implement a wrapper around the
-provided [RESTful API](doc/specs.md).
-
----
-
-This system is composed of two parts:
-* A server running on a given machine that will be used to display tensorboard
-  and store all the data.
-* A client embedded inside your code that will send the datas to the server.
-
-Note that the server and the client *do not* have to be on the same machine.
+The name Lapiz simply means "crayon" in Spanish, because this cool idea comes from [crayon](https://github.com/torrvision/crayon) client/server library. I decided to rewrite crayon instead of making endless breaking PR because I was not convinced by the API or naming ("experiment" vs "run", etc) and its server code required quite some rewriting to adopt Tensorboard v1.3.0 HTTP API.
 
 
-## Install
+## Overview
+The client, a basic Python class that simply requires Python [request](http://docs.python-requests.org/en/latest/) library, sends json data to a server over HTTP. The server, a Flask app, then writes that data to Tensorboard using the Tensorflow `tf.Summary` API.
 
-### Server machine
+The server and embarked Tensorboard can be dockerized, which really makes it easy to use Tensorboard from outside of the Tensorflow ecosystem.
 
-The machine that will host the server needs to
-have [docker](https://www.docker.com/) installed. The server is completely
-packaged inside a docker container. To get it, run:
 
-```bash
-$ docker pull alband/crayon
-```
+## Quickstart
+### Server-side
+On the server instance, run the dockerized server
 
-### Client machine
+    docker run -d -p 6006:6006 -p 6007:6007 --name lapiz bosr/lapiz
 
-The client machine only need to install the client for the required language.
-Detailed instructions can be read by nagivating to
-their [respective directories](client/).
+The first exposed port 6006 is for the browser to connect to Tensorboard web interface, the second 6007 is for lapiz Flask server.
 
-TL;DR:
+### Client-side
+In your project virtualenv, install the [lapiz-client](https://github.com/bosr/lapiz-client) python library:
 
-* Lua / Torch - `$ luarocks install crayon`
-* Python 2 - `$ pip install pycrayon`
-* Python 3 - `$ pip3 install pycrayon`
+    pip install lapiz-client  # available on Pypi
 
-## Usage
+From a client:
 
-### Server machine
+    import lapiz as lz
 
-To start the server, run the following:
+    cl = lz.Client('192.168.78.36', port=6007)  # check connection to lapiz server (6007 by default)
 
-```bash
-$ docker run -d -p 8888:8888 -p 8889:8889 --name crayon alband/crayon
-```
+    with cl.run('run0,lr=1e-3,lambda=1e-1') as run:
+        for _ in range(num_steps):
 
-Tensorboard is now accessible on a browser at `server_machine_address:8888`. The
-client should send the data at `server_machine_address:8889`.
+            # ...
 
-### Client
+            # the global_step starts at 0 by default, but override it with run.step(1)
+            run.step()  # now step is 1
 
-See the documentation for the required language:
+            run.add_scalar('accuracy', 1.3e-3)            # numpy types accepted
+            run.add_histogram('hidden_weights', weights)  # flatten your weights
+            run.add_image('sample', img)
+            run.add_audio('audio', waveform)
 
-* [Lua](client/lua/README.md#usage-example)
-* [Python](client/python/README.md#usage-example)
+            # run.save()  # not needed unless you cannot wait for the next run.step()
 
+Each time the `run.step()` instruction is executed, the client saves all
+unsaved summaries, if any. You can save those summaries as early as you want
+with `run.save()`. The context manager makes it sure unsaved summaries will be
+saved at exit.
+
+If the context manager style adopted by `run` does not fit you, use it directly
+but just don't forget to save and close:
+
+    run = cl.run('run0,lr=1e-3,lambda=1e-1')
+    run.step(36)
+    run.add_scalar('accuracy', 1e-3)
+    run.save()  # send to lapiz server
+    run.step(37)
+    run.add_scalar('G_loss', 1e-1)
+    run.wall_time(11.3)  # arbitrary wall_time
+    run.save()
+    run.close()  # or del run
+
+The wall time associated to events is taken automatically when `run.save()` is
+executed, but it can be overwritten with `run.wall_time(time.time())`.
+
+## Additional doc
+
+- Format of json messages: [doc/JSON.md](doc/JSON.md)
+- API specs for the Flask server (not yet updated): [doc/specs.md](doc/specs.md)
+- More server-side options: [doc/SERVER.md](doc/SERVER.md)
+- `lapiz-client` docs: https://github.com/bosr/lapiz-client
