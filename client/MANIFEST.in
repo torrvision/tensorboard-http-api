@@ -1,0 +1,3 @@
+include TODO
+include DESCRIPTION.rst
+recursive-exclude test *
