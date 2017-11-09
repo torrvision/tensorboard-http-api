@@ -3,7 +3,10 @@ from flask import Flask, request, json
 app = Flask("crayonserver")
 
 # HTTP client to use the tensorboard api
-import urllib2
+try:
+  from urllib2 import urlopen
+except ImportError:
+  from urllib.request import urlopen
 
 # Server version
 __version__ = "0.5"
@@ -157,7 +160,7 @@ def tb_request(query_type, run=None, tag=None, safe=True):
 
   request_url = request_url.format(query_type, run, tag)
   try:
-    return urllib2.urlopen(request_url, timeout=1).read()
+    return urlopen(request_url, timeout=1).read()
   except:
     raise ValueError
 
